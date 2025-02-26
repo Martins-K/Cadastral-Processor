@@ -6,6 +6,12 @@ const XLSX = require("xlsx");
 const { Builder, By, until } = require("selenium-webdriver");
 const chrome = require("selenium-webdriver/chrome");
 
+const options = new chrome.Options();
+options.addArguments("--headless");
+options.addArguments("--disable-dev-shm-usage");
+options.addArguments("--no-sandbox");
+options.addArguments("--disable-gpu");
+
 const app = express();
 const port = process.env.PORT || 3000;
 const upload = multer({ dest: "uploads/" });
@@ -76,7 +82,13 @@ app.post("/process", upload.single("excelFile"), async (req, res) => {
 
 app.get("/download", (req, res) => {
   const fileName = req.query.file;
-  const filePath = path.join(__dirname, "uploads", fileName); // Ensure this path matches your storage folder
+  const filePath = path.join(__dirname, "outputs", fileName); // Using the outputs directory
+
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    console.error(`File not found: ${filePath}`);
+    return res.status(404).send("File not found.");
+  }
 
   res.download(filePath, (err) => {
     if (err) {
