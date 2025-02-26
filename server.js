@@ -21,6 +21,24 @@ let clients = []; // Store active connections for SSE
 // Serve static files
 app.use(express.static("public"));
 
+// Create an example .xls file on server start (if it doesn't exist)
+function createExampleXLS() {
+  const exampleData = [["Cadastral Number"], ["1234567890"], ["0987654321"], ["1122334455"], ["5566778899"]];
+
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet(exampleData);
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Cadastral Numbers");
+
+  const exampleFilePath = path.join(__dirname, "public", "example_cadastral_numbers.xls");
+  if (!fs.existsSync(exampleFilePath)) {
+    XLSX.writeFile(workbook, exampleFilePath);
+    console.log(`Example .xls file created at: ${exampleFilePath}`);
+  }
+}
+
+// Create example file when server starts
+createExampleXLS();
+
 // SSE endpoint to send progress updates
 app.get("/progress", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
@@ -78,6 +96,20 @@ app.post("/process", upload.single("excelFile"), async (req, res) => {
     console.error("Error processing file:", error);
     res.status(500).json({ error: "Failed to process file", details: error.message });
   }
+});
+
+// Route to download the example .xls file
+app.get("/download-sample", (req, res) => {
+  const exampleFilePath = path.join(__dirname, "public", "example_cadastral_numbers.xls");
+  if (!fs.existsSync(exampleFilePath)) {
+    return res.status(404).send("Example file not found.");
+  }
+  res.download(exampleFilePath, "example_cadastral_numbers.xls", (err) => {
+    if (err) {
+      console.error("Download error:", err);
+      res.status(500).send("Error downloading example file.");
+    }
+  });
 });
 
 app.get("/download", (req, res) => {

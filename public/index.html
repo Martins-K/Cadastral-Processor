@@ -46,6 +46,7 @@
         cursor: pointer;
         font-size: 16px;
         transition: background-color 0.3s;
+        margin-right: 10px;
       }
       button:hover {
         background-color: #45a049;
@@ -121,6 +122,7 @@
       </div>
       <div style="margin-top: 10px">
         <button type="submit">Process File</button>
+        <button type="button" id="downloadSample">Download Sample</button>
       </div>
     </form>
 
@@ -196,6 +198,11 @@
           console.error("Error:", error);
           alert("An error occurred during processing.");
         }
+      });
+
+      // Add event listener for the "Download Sample" button
+      document.getElementById("downloadSample").addEventListener("click", () => {
+        window.location.href = "/download-sample";
       });
     </script>
   </body>
