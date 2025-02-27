@@ -51,6 +51,22 @@
       button:hover {
         background-color: #45a049;
       }
+      .neutral-button {
+        background-color: #6c757d; /* Neutral grey */
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s, transform 0.2s;
+        margin-right: 10px;
+      }
+
+      .neutral-button:hover {
+        background-color: #5a6268; /* Slightly darker grey on hover */
+        transform: scale(1.05); /* Subtle zoom effect */
+      }
       .progress-container {
         margin-top: 20px;
         display: none;
@@ -97,6 +113,18 @@
         color: #4caf50;
         text-align: center;
       }
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
       #downloadLink {
         display: inline-block;
         margin-top: 10px;
@@ -106,7 +134,9 @@
         text-decoration: none;
         border-radius: 4px;
         transition: background-color 0.3s;
+        animation: pulse 1.5s infinite ease-in-out;
       }
+
       #downloadLink:hover {
         background-color: #45a049;
       }
@@ -122,17 +152,16 @@
       </div>
       <div style="margin-top: 10px">
         <button type="submit">Process File</button>
-        <button type="button" id="downloadSample">Download Sample</button>
+        <button class="neutral-button" type="button" id="downloadSample">Download Sample</button>
       </div>
     </form>
 
     <div class="progress-container" id="progressContainer">
       <h3>Processing Cadastral Numbers...</h3>
       <div class="progress-bar">
-        <div class="progress" id="progressBar">0%</div>
+        <div class="progress" id="progressBar" style="width: 0%"></div>
       </div>
-      <div class="progress-text" id="progressText">0%</div>
-      <div class="count-text" id="countText">0 of 0 processed</div>
+      <div class="count-text" id="countText" style="display: none"></div>
     </div>
 
     <div class="result-container" id="resultContainer">
@@ -159,6 +188,11 @@
         document.getElementById("progressContainer").style.display = "block";
         document.getElementById("resultContainer").style.display = "none";
 
+        // Set initial message
+        document.getElementById("progressBar").innerText = "Setting things up, hold tight! ☕";
+        document.getElementById("progressBar").style.width = "100%"; // Full width for better visibility
+        document.getElementById("countText").style.display = "none"; // Hide count initially
+
         // Start listening for progress updates
         const eventSource = new EventSource("/progress");
 
@@ -166,9 +200,13 @@
           const data = JSON.parse(event.data);
           const percentage = Math.round((data.progress / data.total) * 100);
 
+          // Once progress starts, replace the message with actual progress info
+          if (data.progress > 0) {
+            document.getElementById("progressBar").innerText = percentage + "%";
+            document.getElementById("countText").style.display = "block";
+          }
+
           document.getElementById("progressBar").style.width = percentage + "%";
-          document.getElementById("progressBar").innerText = percentage + "%";
-          document.getElementById("progressText").innerText = percentage + "%";
           document.getElementById("countText").innerText = `${data.progress} of ${data.total} processed`;
 
           if (data.progress >= data.total) {
@@ -188,7 +226,7 @@
           if (result.success) {
             document.getElementById(
               "resultMessage"
-            ).innerText = `Successfully processed ${result.totalProcessed} cadastral numbers.`;
+            ).innerText = `Successfully extracted ${result.totalProcessed} cadastral designation numbers.`;
             document.getElementById("downloadLink").href = result.downloadPath;
             document.getElementById("resultContainer").style.display = "block";
           } else {
@@ -205,5 +243,8 @@
         window.location.href = "/download-sample";
       });
     </script>
+    <footer style="text-align: center; padding: 10px; background-color: #f1f1f1; margin-top: 20px; border-top: 1px solid #ddd">
+      <p>&copy; 2025 MK. All rights reserved.</p>
+    </footer>
   </body>
 </html>

@@ -2,3 +2,5 @@
 node_modules
 package-lock.json
 /outputs
+/uploads
+public/example_cadastral_numbers.xls
