@@ -140,7 +140,10 @@ async function processCadastralNumbers(inputFilePath) {
   const totalEntries = data.length - 1;
   let processed = 0;
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.PLAYWRIGHT_BROWSERS_PATH ? undefined : "chromium",
+  });
   const context = await browser.newContext();
   const page = await context.newPage();
 
