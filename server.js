@@ -4,6 +4,10 @@ const path = require("path");
 const fs = require("fs");
 const XLSX = require("xlsx");
 
+// Add at the top of your file
+process.env.PLAYWRIGHT_BROWSERS_PATH = "0";
+process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
+
 const app = express();
 const port = process.env.PORT || 3000;
 const upload = multer({ dest: "uploads/" });
@@ -123,8 +127,6 @@ app.get("/download", (req, res) => {
 });
 
 // Function to process cadastral numbers
-const { chromium } = require("playwright");
-
 async function processCadastralNumbers(inputFilePath) {
   const workbook = XLSX.readFile(inputFilePath);
   const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -140,99 +142,124 @@ async function processCadastralNumbers(inputFilePath) {
   const totalEntries = data.length - 1;
   let processed = 0;
 
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.PLAYWRIGHT_BROWSERS_PATH ? undefined : "chromium",
-  });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
   try {
-    await page.goto("https://www.kadastrs.lv");
-    console.log("Navigated to kadastrs.lv");
+    // Use Playwright's webkit instead of chromium as it might have better compatibility
+    const { webkit } = require("playwright");
 
+    const browser = await webkit.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await page.goto("https://www.kadastrs.lv");
+      console.log("Navigated to kadastrs.lv");
+
+      for (let i = 1; i < data.length; i++) {
+        const cadastralNumber = data[i].A;
+        if (!cadastralNumber) continue;
+
+        try {
+          // Navigate to properties page - use navigation promise to ensure completion
+          console.log(`Processing cadastral number: ${cadastralNumber}`);
+          await Promise.all([page.click('a.remote_menu[href="/properties"]')]);
+
+          // Clear any existing text before filling
+          await page.locator("#cad_num").clear();
+          await page.locator("#cad_num").fill(`${cadastralNumber}`);
+          console.log("Filled cadastral number input");
+
+          // Use navigation promise for search action too
+          await Promise.all([page.click("input[value='Meklēt']")]);
+
+          // Check if we have results
+          const hasResults = await page
+            .waitForSelector("td.cad_num a", {
+              state: "attached",
+              timeout: 5000,
+            })
+            .then(() => true)
+            .catch(() => false);
+          console.log(`Results found: ${hasResults}`);
+
+          if (hasResults) {
+            // Click on the first result and wait for details page
+            await Promise.all([page.click("td.cad_num a")]);
+
+            // Wait for the table with designation numbers
+            await page.waitForSelector("#parcels-tbody", { timeout: 10000 });
+
+            const designationNumbers = await page.$$eval("#parcels-tbody td.cad_num a", (elements) =>
+              elements.map((el) => el.textContent.trim())
+            );
+
+            if (designationNumbers.length > 0) {
+              designationNumbers.forEach((text) => {
+                results.push({
+                  "Cadaster number": cadastralNumber,
+                  "Cadaster designation number": text,
+                });
+              });
+              console.log(`Found ${designationNumbers.length} designation numbers`);
+            } else {
+              results.push({
+                "Cadaster number": cadastralNumber,
+                "Cadaster designation number": "No designation numbers found",
+              });
+            }
+          } else {
+            results.push({
+              "Cadaster number": cadastralNumber,
+              "Cadaster designation number": "Error: No results found",
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing ${cadastralNumber}:`, error.message);
+          results.push({
+            "Cadaster number": cadastralNumber,
+            "Cadaster designation number": `Error: ${error.message}`,
+          });
+
+          // Recover from errors by going back to the home page
+          try {
+            await page.goto("https://www.kadastrs.lv");
+            console.log("Recovered by navigating back to home page");
+          } catch (navError) {
+            console.error("Failed to recover:", navError.message);
+          }
+        }
+
+        processed++;
+        sendProgressUpdate(processed, totalEntries);
+
+        // Add a small delay between requests to avoid overloading the server
+        await page.waitForTimeout(1000);
+      }
+    } finally {
+      await browser.close();
+    }
+  } catch (browserError) {
+    console.error("Browser initialization error:", browserError);
+
+    // Fall back to a simpler approach if browser automation fails
+    console.log("Adding placeholder results due to browser initialization failure");
+
+    // Add results indicating failure but at least providing something to the user
     for (let i = 1; i < data.length; i++) {
       const cadastralNumber = data[i].A;
       if (!cadastralNumber) continue;
 
-      try {
-        // Navigate to properties page - use navigation promise to ensure completion
-        console.log(`Processing cadastral number: ${cadastralNumber}`);
-        await Promise.all([page.click('a.remote_menu[href="/properties"]')]);
-
-        // Clear any existing text before filling
-        await page.locator("#cad_num").clear();
-        await page.locator("#cad_num").fill(`${cadastralNumber}`);
-        console.log("Filled cadastral number input");
-
-        // Use navigation promise for search action too
-        await Promise.all([page.click("input[value='Meklēt']")]);
-
-        // Check if we have results
-        const hasResults = await page
-          .waitForSelector("td.cad_num a", {
-            state: "attached",
-            timeout: 5000,
-          })
-          .then(() => true)
-          .catch(() => false);
-        console.log(`Results found: ${hasResults}`);
-
-        if (hasResults) {
-          // Click on the first result and wait for details page
-          await Promise.all([page.click("td.cad_num a")]);
-
-          // Wait for the table with designation numbers
-          await page.waitForSelector("#parcels-tbody", { timeout: 10000 });
-
-          const designationNumbers = await page.$$eval("#parcels-tbody td.cad_num a", (elements) =>
-            elements.map((el) => el.textContent.trim())
-          );
-
-          if (designationNumbers.length > 0) {
-            designationNumbers.forEach((text) => {
-              results.push({
-                "Cadaster number": cadastralNumber,
-                "Cadaster designation number": text,
-              });
-            });
-            console.log(`Found ${designationNumbers.length} designation numbers`);
-          } else {
-            results.push({
-              "Cadaster number": cadastralNumber,
-              "Cadaster designation number": "No designation numbers found",
-            });
-          }
-        } else {
-          results.push({
-            "Cadaster number": cadastralNumber,
-            "Cadaster designation number": "Error: No results found",
-          });
-        }
-      } catch (error) {
-        console.error(`Error processing ${cadastralNumber}:`, error.message);
-        results.push({
-          "Cadaster number": cadastralNumber,
-          "Cadaster designation number": `Error: ${error.message}`,
-        });
-
-        // Recover from errors by going back to the home page
-        try {
-          await page.goto("https://www.kadastrs.lv");
-          console.log("Recovered by navigating back to home page");
-        } catch (navError) {
-          console.error("Failed to recover:", navError.message);
-        }
-      }
+      results.push({
+        "Cadaster number": cadastralNumber,
+        "Cadaster designation number": "Error: Browser automation failed - please try locally",
+      });
 
       processed++;
       sendProgressUpdate(processed, totalEntries);
-
-      // Add a small delay between requests to avoid overloading the server
-      await page.waitForTimeout(1000);
     }
-  } finally {
-    await browser.close();
   }
 
   return results;
