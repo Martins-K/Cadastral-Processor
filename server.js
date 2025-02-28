@@ -5,8 +5,8 @@ const fs = require("fs");
 const XLSX = require("xlsx");
 
 // Add at the top of your file
-process.env.PLAYWRIGHT_BROWSERS_PATH = "0";
-process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
+// process.env.PLAYWRIGHT_BROWSERS_PATH = "0";
+// process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
 
 const app = express();
 const port = process.env.PORT || 3000;
