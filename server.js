@@ -140,9 +140,9 @@ async function processCadastralNumbers(inputFilePath) {
 
   try {
     // Use Playwright's webkit instead of chromium as it might have better compatibility
-    const { webkit } = require("playwright");
+    const { chromium } = require("playwright");
 
-    const browser = await webkit.launch({
+    const browser = await chromium.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
