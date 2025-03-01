@@ -4,10 +4,6 @@ const path = require("path");
 const fs = require("fs");
 const XLSX = require("xlsx");
 
-// Add at the top of your file
-// process.env.PLAYWRIGHT_BROWSERS_PATH = "0";
-// process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
-
 const app = express();
 const port = process.env.PORT || 3000;
 const upload = multer({ dest: "uploads/" });
@@ -183,7 +179,6 @@ async function processCadastralNumbers(inputFilePath) {
             })
             .then(() => true)
             .catch(() => false);
-          console.log(`Results found: ${hasResults}`);
 
           if (hasResults) {
             // Click on the first result and wait for details page
