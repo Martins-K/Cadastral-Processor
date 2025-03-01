@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cadastral Number Processor</title>
     <style>
@@ -139,6 +140,22 @@
 
       #downloadLink:hover {
         background-color: #45a049;
+      }
+
+      @media (max-width: 600px) {
+        /* Stack buttons vertically on small screens */
+        form div {
+          display: flex;
+          flex-direction: column;
+          gap: 10px; /* Adds space between stacked buttons */
+        }
+
+        /* Make buttons full width on small screens */
+        button,
+        .neutral-button {
+          width: 100%;
+          margin-right: 0; /* Remove right margin since buttons are stacked */
+        }
       }
     </style>
   </head>

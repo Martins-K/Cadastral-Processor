@@ -13,6 +13,15 @@ let clients = []; // Store active connections for SSE
 // Serve static files
 app.use(express.static("public"));
 
+app.use((req, res, next) => {
+  console.log(`Request URL: ${req.url}`);
+  next();
+});
+
+app.get("/favicon.ico", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "favicon.ico"));
+});
+
 // Create an example .xls file on server start (if it doesn't exist)
 function createExampleXLS() {
   const exampleData = [["Cadastral Number"], ["1234567890"], ["0987654321"], ["1122334455"], ["5566778899"]];
