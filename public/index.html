@@ -30,13 +30,19 @@
         display: block;
         margin-bottom: 8px;
       }
-      input[type="file"] {
+      input[type="file"], input[type="email"], textarea {
         width: 100%;
         padding: 10px;
         margin-bottom: 10px;
         border: 1px solid #ddd;
         border-radius: 4px;
         background-color: #fafafa;
+        box-sizing: border-box;
+      }
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+        font-family: Arial, sans-serif;
       }
       button {
         background-color: #4caf50;
@@ -52,8 +58,12 @@
       button:hover {
         background-color: #45a049;
       }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
       .neutral-button {
-        background-color: #6c757d; /* Neutral grey */
+        background-color: #6c757d;
         color: white;
         padding: 10px 20px;
         border: none;
@@ -63,10 +73,27 @@
         transition: background-color 0.3s, transform 0.2s;
         margin-right: 10px;
       }
-
       .neutral-button:hover {
-        background-color: #5a6268; /* Slightly darker grey on hover */
-        transform: scale(1.05); /* Subtle zoom effect */
+        background-color: #5a6268;
+        transform: scale(1.05);
+      }
+      .email-button {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s;
+        margin-right: 10px;
+      }
+      .email-button:hover {
+        background-color: #0056b3;
+      }
+      .email-button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
       }
       .progress-container {
         margin-top: 20px;
@@ -114,6 +141,36 @@
         color: #4caf50;
         text-align: center;
       }
+      .email-section {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 2px solid #e0e0e0;
+      }
+      .email-input-group {
+        margin-bottom: 15px;
+      }
+      .email-status {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 4px;
+        text-align: center;
+        display: none;
+      }
+      .email-status.success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .email-status.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .small-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+      }
       @keyframes pulse {
         0% {
           transform: scale(1);
@@ -125,7 +182,6 @@
           transform: scale(1);
         }
       }
-
       #downloadLink {
         display: inline-block;
         margin-top: 10px;
@@ -137,24 +193,20 @@
         transition: background-color 0.3s;
         animation: pulse 1.5s infinite ease-in-out;
       }
-
       #downloadLink:hover {
         background-color: #45a049;
       }
-
       @media (max-width: 600px) {
-        /* Stack buttons vertically on small screens */
         form div {
           display: flex;
           flex-direction: column;
-          gap: 10px; /* Adds space between stacked buttons */
+          gap: 10px;
         }
-
-        /* Make buttons full width on small screens */
         button,
-        .neutral-button {
+        .neutral-button,
+        .email-button {
           width: 100%;
-          margin-right: 0; /* Remove right margin since buttons are stacked */
+          margin-right: 0;
         }
       }
     </style>
@@ -167,6 +219,13 @@
         <label for="excelFile">Upload Excel File:</label>
         <input type="file" id="excelFile" name="excelFile" accept=".xlsx,.xls" required />
       </div>
+      
+      <div style="margin-top: 15px;">
+        <label for="primaryEmail">Email Address (results will be sent here):</label>
+        <input type="email" id="primaryEmail" name="primaryEmail" placeholder="your.email@example.com" required />
+        <div class="small-text">Enter the email address where you want to receive the processed results</div>
+      </div>
+      
       <div style="margin-top: 10px">
         <button type="submit">Process File</button>
         <button class="neutral-button" type="button" id="downloadSample">Download Sample</button>
@@ -182,24 +241,76 @@
     </div>
 
     <div class="result-container" id="resultContainer">
-      <h3>Processing Complete!</h3>
+      <h3 id="resultsAnchor">Processing Complete!</h3>
       <p id="resultMessage"></p>
       <a id="downloadLink" href="#" download>Download Results</a>
+      
+      <div class="email-section">
+        <h4 style="color: #007bff; margin-bottom: 15px;">📧 Send to Additional Email Address(es)</h4>
+        <p style="margin-bottom: 15px; color: #666;">If you want to send the results to more email address(es), use the forms below:</p>
+        
+        <div class="email-input-group">
+          <label for="emailAddresses">Additional Email Addresses:</label>
+          <textarea 
+            id="emailAddresses" 
+            placeholder="Enter additional email addresses separated by commas or new lines&#10;Example:&#10;john@example.com&#10;jane@example.com, admin@company.com"
+            rows="3"
+          ></textarea>
+          <div class="small-text">Enter additional email addresses separated by commas or new lines</div>
+        </div>
+        
+        <div class="email-input-group">
+          <label for="emailSubject">Subject (optional):</label>
+          <input 
+            type="text" 
+            id="emailSubject" 
+            placeholder="Custom email subject"
+            value="Cadastral Processing Results"
+          />
+        </div>
+        
+        <div class="email-input-group">
+          <label for="emailMessage">Message (optional):</label>
+          <textarea 
+            id="emailMessage" 
+            placeholder="Add a custom message to the email..."
+            rows="3"
+          ></textarea>
+        </div>
+        
+        <button class="email-button" type="button" id="sendEmailBtn" disabled>
+          Send to Additional Emails
+        </button>
+        
+        <div id="emailStatus" class="email-status"></div>
+      </div>
     </div>
 
     <script>
+      let processedFileName = null;
+      let totalProcessedCount = 0;
+      let primaryEmailAddress = null;
+
       document.getElementById("uploadForm").addEventListener("submit", async function (e) {
         e.preventDefault();
 
         const formData = new FormData();
         const fileInput = document.getElementById("excelFile");
+        const primaryEmail = document.getElementById("primaryEmail").value.trim();
 
         if (!fileInput.files[0]) {
           alert("Please select a file.");
           return;
         }
 
+        if (!primaryEmail) {
+          alert("Please enter an email address.");
+          return;
+        }
+
+        primaryEmailAddress = primaryEmail;
         formData.append("excelFile", fileInput.files[0]);
+        formData.append("primaryEmail", primaryEmail);
 
         // Show progress container
         document.getElementById("progressContainer").style.display = "block";
@@ -207,8 +318,8 @@
 
         // Set initial message
         document.getElementById("progressBar").innerText = "Setting things up, hold tight! ☕";
-        document.getElementById("progressBar").style.width = "100%"; // Full width for better visibility
-        document.getElementById("countText").style.display = "none"; // Hide count initially
+        document.getElementById("progressBar").style.width = "100%";
+        document.getElementById("countText").style.display = "none";
 
         // Start listening for progress updates
         const eventSource = new EventSource("/progress");
@@ -217,7 +328,6 @@
           const data = JSON.parse(event.data);
           const percentage = Math.round((data.progress / data.total) * 100);
 
-          // Once progress starts, replace the message with actual progress info
           if (data.progress > 0) {
             document.getElementById("progressBar").innerText = percentage + "%";
             document.getElementById("countText").style.display = "block";
@@ -241,11 +351,20 @@
           const result = await response.json();
 
           if (result.success) {
-            document.getElementById(
-              "resultMessage"
-            ).innerText = `Successfully extracted ${result.totalProcessed} cadastral designation numbers.`;
+            processedFileName = result.fileName;
+            totalProcessedCount = result.totalProcessed;
+            
+            document.getElementById("resultMessage").innerText = 
+              `Successfully extracted ${result.totalProcessed} cadastral designation numbers, results sent to ${primaryEmailAddress}`;
             document.getElementById("downloadLink").href = result.downloadPath;
             document.getElementById("resultContainer").style.display = "block";
+            document.getElementById("sendEmailBtn").disabled = false;
+            
+            // Scroll to the results section
+            document.getElementById("resultsAnchor").scrollIntoView({ 
+              behavior: "smooth", 
+              block: "start" 
+            });
           } else {
             alert("Error: " + result.error);
           }
@@ -255,11 +374,73 @@
         }
       });
 
-      // Add event listener for the "Download Sample" button
+      // Send email functionality
+      document.getElementById("sendEmailBtn").addEventListener("click", async function() {
+        const emailAddresses = document.getElementById("emailAddresses").value.trim();
+        const emailSubject = document.getElementById("emailSubject").value.trim();
+        const emailMessage = document.getElementById("emailMessage").value.trim();
+        const statusDiv = document.getElementById("emailStatus");
+        
+        if (!emailAddresses) {
+          statusDiv.textContent = "Please enter at least one additional email address.";
+          statusDiv.className = "email-status error";
+          statusDiv.style.display = "block";
+          return;
+        }
+
+        // Disable button and show loading
+        const sendBtn = document.getElementById("sendEmailBtn");
+        const originalText = sendBtn.textContent;
+        sendBtn.disabled = true;
+        sendBtn.textContent = "Sending...";
+        
+        statusDiv.style.display = "none";
+
+        try {
+          const response = await fetch("/send-email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              emails: emailAddresses,
+              subject: emailSubject || "Cadastral Processing Results",
+              message: emailMessage,
+              fileName: processedFileName,
+              totalProcessed: totalProcessedCount
+            }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            statusDiv.textContent = `✅ Email sent successfully to ${result.emailCount} recipient(s)!`;
+            statusDiv.className = "email-status success";
+            // Clear the email fields
+            document.getElementById("emailAddresses").value = "";
+            document.getElementById("emailMessage").value = "";
+          } else {
+            statusDiv.textContent = `❌ Error sending email: ${result.error}`;
+            statusDiv.className = "email-status error";
+          }
+        } catch (error) {
+          console.error("Email error:", error);
+          statusDiv.textContent = "❌ Network error occurred while sending email.";
+          statusDiv.className = "email-status error";
+        } finally {
+          // Re-enable button
+          sendBtn.disabled = false;
+          sendBtn.textContent = originalText;
+          statusDiv.style.display = "block";
+        }
+      });
+
+      // Download sample functionality
       document.getElementById("downloadSample").addEventListener("click", () => {
         window.location.href = "/download-sample";
       });
     </script>
+    
     <footer style="text-align: center; padding: 10px; background-color: #f1f1f1; margin-top: 20px; border-top: 1px solid #ddd">
       <p>&copy; 2025 MK. All rights reserved.</p>
     </footer>

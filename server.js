@@ -17,6 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 app.use(express.static("public"));
+app.use(express.json()); // Add JSON body parser for email endpoint
 
 app.use((req, res, next) => {
   console.log(`Request URL: ${req.url}`);
@@ -64,19 +65,102 @@ function sendProgressUpdate(progress, total) {
   });
 }
 
+// Helper function to parse email addresses
+function parseEmailAddresses(emailString) {
+  return emailString
+    .split(/[,\n\r]+/)
+    .map(email => email.trim())
+    .filter(email => email.length > 0)
+    .filter(email => {
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    });
+}
+
+// Email sending endpoint
+app.post("/send-email", async (req, res) => {
+  try {
+    const { emails, subject, message, fileName, totalProcessed } = req.body;
+    
+    if (!emails || !fileName) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Missing required fields" 
+      });
+    }
+
+    // Parse email addresses
+    const emailList = parseEmailAddresses(emails);
+    
+    if (emailList.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "No valid email addresses provided" 
+      });
+    }
+
+    // Find the file
+    const filePath = path.join(__dirname, "outputs", fileName);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Processed file not found" 
+      });
+    }
+
+    // Prepare email content
+    let emailText = `Your cadastral number processing has completed.\n\nTotal processed: ${totalProcessed}\n\n`;
+    if (message && message.trim()) {
+      emailText += `Message:\n${message.trim()}\n\n`;
+    }
+    emailText += `Please find the processed file attached.\n\nBest regards,\nCadastral Processing System`;
+
+    // Send email to all recipients
+    await sendEmail(
+      subject || "Cadastral Processing Results",
+      emailText,
+      filePath,
+      fileName,
+      emailList
+    );
+
+    console.log(`Email sent successfully to ${emailList.length} recipient(s): ${emailList.join(', ')}`);
+    
+    res.json({
+      success: true,
+      message: "Email sent successfully",
+      emailCount: emailList.length,
+      recipients: emailList
+    });
+
+  } catch (error) {
+    console.error("Error sending email:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to send email"
+    });
+  }
+});
+
 app.post("/process", upload.single("excelFile"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const filePath = req.file.path;
     const originalName = req.file.originalname;
+    const primaryEmail = req.body.primaryEmail;
+
+    if (!primaryEmail) {
+      return res.status(400).json({ error: "Primary email address is required" });
+    }
 
     const parsedPath = path.parse(originalName);
     const baseName = parsedPath.name;
     const extension = parsedPath.ext;
 
     const outputFilename = `${baseName}_processed${extension}`;
-
     const outputPath = path.join(__dirname, "outputs", outputFilename);
 
     fs.mkdirSync(path.join(__dirname, "outputs"), { recursive: true });
@@ -93,27 +177,28 @@ app.post("/process", upload.single("excelFile"), async (req, res) => {
 
     sendProgressUpdate(results.length - 1, results.length - 1);
 
-    // Send email with attachment (using the new filename)
+    // Send email to primary email address
     try {
+      const emailText = `Your cadastral number processing has completed for file: ${originalName}.\n\nTotal processed: ${results.length - 1}\n\nPlease find the processed file attached.\n\nBest regards,\nCadastral Processing System`;
+      
       await sendEmail(
-        "Cadastral Processing Completed",
-        `Your cadastral number processing has completed for file: ${originalName}.\nTotal processed: ${results.length - 1}`,
+        "Cadastral Processing Results",
+        emailText,
         outputPath,
-        outputFilename
+        outputFilename,
+        [primaryEmail]
       );
-      console.log("Email sent successfully!");
+      console.log(`Email sent successfully to primary email: ${primaryEmail}`);
     } catch (emailError) {
-      console.error("Error sending email:", emailError);
-      //  IMPORTANT:  Handle the email sending error.  
-      //  You might want to log this to a file, or inform the user.
-      //  For now, we'll just log it and continue.  **Don't just swallow the error!**
+      console.error("Error sending email to primary address:", emailError);
+      // Continue processing even if email fails
     }
-
 
     res.json({
       success: true,
       message: "Processing completed",
       downloadPath: `/download?file=${encodeURIComponent(outputFilename)}`,
+      fileName: outputFilename,
       totalProcessed: results.length - 1,
     });
   } catch (error) {
@@ -197,8 +282,6 @@ async function processCadastralNumbers(inputFilePath) {
   console.timeEnd("ProcessingTime");
   return results;
 }
-
-
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
