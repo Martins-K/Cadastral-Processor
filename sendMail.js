@@ -20,7 +20,6 @@ async function sendEmail(subject, text, attachmentPath, attachmentFilename, reci
   const mailOptions = {
     from: '"Cadastral Checker" <martins.kruklis@gmail.com>',
     to: recipients.join(', '), // Join all recipients
-    cc: "martins.kruklis@gmail.com", // Keep CC to sender
     subject: subject,
     text: text,
     attachments: []

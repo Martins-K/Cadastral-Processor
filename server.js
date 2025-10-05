@@ -5,8 +5,8 @@ import fs from "fs";
 import XLSX from "xlsx";
 import { chromium } from "playwright";
 import sendEmail from "./sendMail.js";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -69,9 +69,9 @@ function sendProgressUpdate(progress, total) {
 function parseEmailAddresses(emailString) {
   return emailString
     .split(/[,\n\r]+/)
-    .map(email => email.trim())
-    .filter(email => email.length > 0)
-    .filter(email => {
+    .map((email) => email.trim())
+    .filter((email) => email.length > 0)
+    .filter((email) => {
       // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(email);
@@ -82,31 +82,31 @@ function parseEmailAddresses(emailString) {
 app.post("/send-email", async (req, res) => {
   try {
     const { emails, subject, message, fileName, totalProcessed } = req.body;
-    
+
     if (!emails || !fileName) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "Missing required fields" 
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields",
       });
     }
 
     // Parse email addresses
     const emailList = parseEmailAddresses(emails);
-    
+
     if (emailList.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "No valid email addresses provided" 
+      return res.status(400).json({
+        success: false,
+        error: "No valid email addresses provided",
       });
     }
 
     // Find the file
     const filePath = path.join(__dirname, "outputs", fileName);
-    
+
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ 
-        success: false, 
-        error: "Processed file not found" 
+      return res.status(404).json({
+        success: false,
+        error: "Processed file not found",
       });
     }
 
@@ -126,20 +126,21 @@ app.post("/send-email", async (req, res) => {
       emailList
     );
 
-    console.log(`Email sent successfully to ${emailList.length} recipient(s): ${emailList.join(', ')}`);
-    
+    console.log(
+      `Email sent successfully to ${emailList.length} recipient(s): ${emailList.join(", ")}`
+    );
+
     res.json({
       success: true,
       message: "Email sent successfully",
       emailCount: emailList.length,
-      recipients: emailList
+      recipients: emailList,
     });
-
   } catch (error) {
     console.error("Error sending email:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to send email"
+      error: error.message || "Failed to send email",
     });
   }
 });
@@ -152,9 +153,9 @@ app.post("/process", upload.single("excelFile"), async (req, res) => {
     const originalName = req.file.originalname;
     const primaryEmail = req.body.primaryEmail;
 
-    if (!primaryEmail) {
-      return res.status(400).json({ error: "Primary email address is required" });
-    }
+    // if (!primaryEmail) {
+    //   return res.status(400).json({ error: "Primary email address is required" });
+    // }
 
     const parsedPath = path.parse(originalName);
     const baseName = parsedPath.name;
@@ -179,16 +180,14 @@ app.post("/process", upload.single("excelFile"), async (req, res) => {
 
     // Send email to primary email address
     try {
-      const emailText = `Your cadastral number processing has completed for file: ${originalName}.\n\nTotal processed: ${results.length - 1}\n\nPlease find the processed file attached.\n\nBest regards,\nCadastral Processing System`;
-      
-      await sendEmail(
-        "Cadastral Processing Results",
-        emailText,
-        outputPath,
-        outputFilename,
-        [primaryEmail]
-      );
-      console.log(`Email sent successfully to primary email: ${primaryEmail}`);
+      const emailText = `Your cadastral number processing has completed for file: ${originalName}.\n\nTotal processed: ${
+        results.length - 1
+      }\n\nPlease find the processed file attached.\n\nBest regards,\nCadastral Processing System`;
+
+      // await sendEmail("Cadastral Processing Results", emailText, outputPath, outputFilename, [
+      //   primaryEmail,
+      // ]);
+      // console.log(`Email sent successfully to primary email: ${primaryEmail}`);
     } catch (emailError) {
       console.error("Error sending email to primary address:", emailError);
       // Continue processing even if email fails
@@ -232,50 +231,75 @@ async function processCadastralNumbers(inputFilePath) {
   const worksheet = workbook.Sheets[workbook.SheetNames[0]];
   const data = XLSX.utils.sheet_to_json(worksheet, { header: "A" });
 
-  const rows = data.slice(1).filter(row => row.A);
+  const rows = data.slice(1).filter((row) => row.A);
   const batchSize = 10;
   const chunks = chunkArray(rows, batchSize);
-  const results = [{
-    "Cadaster number": "Cadaster number",
-    "Cadaster designation number": "Cadaster designation number",
-  }];
+  const results = [
+    {
+      "Cadaster number": "Cadaster number",
+      "Cadaster designation number": "Cadaster designation number",
+    },
+  ];
   const totalEntries = rows.length;
   let processed = 0;
 
   for (const chunk of chunks) {
-    const batchResults = await Promise.all(chunk.map(async ({ A: cadastralNumber }) => {
-      try {
-        const browser = await chromium.launch({ headless: true });
-        const context = await browser.newContext();
-        const page = await context.newPage();
-        await page.goto("https://www.kadastrs.lv");
-        await page.click('a.remote_menu[href="/properties"]');
-        await page.locator("#cad_num").fill(`${cadastralNumber}`);
-        await page.click("input[value='Meklēt']");
+    const batchResults = await Promise.all(
+      chunk.map(async ({ A: cadastralNumber }) => {
+        try {
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext();
+          const page = await context.newPage();
+          await page.goto("https://www.kadastrs.lv");
+          await page.click('a.remote_menu[href="/properties"]');
+          await page.locator("#cad_num").fill(`${cadastralNumber}`);
+          await page.click("input[value='Meklēt']");
 
-        const hasResults = await page.waitForSelector("td.cad_num a", { timeout: 5000 }).then(() => true).catch(() => false);
-        let entryResults = [];
+          const hasResults = await page
+            .waitForSelector("td.cad_num a", { timeout: 5000 })
+            .then(() => true)
+            .catch(() => false);
+          let entryResults = [];
 
-        if (hasResults) {
-          await page.click("td.cad_num a");
-          await page.waitForSelector("#parcels-tbody", { timeout: 10000 });
-          const designationNumbers = await page.$$eval("#parcels-tbody td.cad_num a", els => els.map(el => el.textContent.trim()));
-          entryResults = designationNumbers.length
-            ? designationNumbers.map(text => ({ "Cadaster number": cadastralNumber, "Cadaster designation number": text }))
-            : [{ "Cadaster number": cadastralNumber, "Cadaster designation number": "No designation numbers found" }];
-        } else {
-          entryResults.push({ "Cadaster number": cadastralNumber, "Cadaster designation number": "Error: No results found" });
+          if (hasResults) {
+            await page.click("td.cad_num a");
+            await page.waitForSelector("#parcels-tbody", { timeout: 10000 });
+            const designationNumbers = await page.$$eval("#parcels-tbody td.cad_num a", (els) =>
+              els.map((el) => el.textContent.trim())
+            );
+            entryResults = designationNumbers.length
+              ? designationNumbers.map((text) => ({
+                  "Cadaster number": cadastralNumber,
+                  "Cadaster designation number": text,
+                }))
+              : [
+                  {
+                    "Cadaster number": cadastralNumber,
+                    "Cadaster designation number": "No designation numbers found",
+                  },
+                ];
+          } else {
+            entryResults.push({
+              "Cadaster number": cadastralNumber,
+              "Cadaster designation number": "Error: No results found",
+            });
+          }
+
+          await browser.close();
+          return entryResults;
+        } catch (err) {
+          return [
+            {
+              "Cadaster number": cadastralNumber,
+              "Cadaster designation number": `Error: ${err.message}`,
+            },
+          ];
+        } finally {
+          processed++;
+          sendProgressUpdate(processed, totalEntries);
         }
-
-        await browser.close();
-        return entryResults;
-      } catch (err) {
-        return [{ "Cadaster number": cadastralNumber, "Cadaster designation number": `Error: ${err.message}` }];
-      } finally {
-        processed++;
-        sendProgressUpdate(processed, totalEntries);
-      }
-    }));
+      })
+    );
     results.push(...batchResults.flat());
   }
 

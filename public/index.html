@@ -30,7 +30,9 @@
         display: block;
         margin-bottom: 8px;
       }
-      input[type="file"], input[type="email"], textarea {
+      input[type="file"],
+      input[type="email"],
+      textarea {
         width: 100%;
         padding: 10px;
         margin-bottom: 10px;
@@ -219,13 +221,22 @@
         <label for="excelFile">Upload Excel File:</label>
         <input type="file" id="excelFile" name="excelFile" accept=".xlsx,.xls" required />
       </div>
-      
-      <div style="margin-top: 15px;">
-        <label for="primaryEmail">Email Address (results will be sent here):</label>
-        <input type="email" id="primaryEmail" name="primaryEmail" placeholder="your.email@example.com" required />
-        <div class="small-text">Enter the email address where you want to receive the processed results</div>
+
+      <div style="margin-top: 15px">
+        <label for="primaryEmail"
+          >Email Address <span style="color: tomato">NOT MANDATORY</span>:</label
+        >
+        <input
+          type="email"
+          id="primaryEmail"
+          name="primaryEmail"
+          placeholder="your.email@example.com"
+        />
+        <div class="small-text">
+          Enter the email address where you want to receive the processed results
+        </div>
       </div>
-      
+
       <div style="margin-top: 10px">
         <button type="submit">Process File</button>
         <button class="neutral-button" type="button" id="downloadSample">Download Sample</button>
@@ -244,44 +255,48 @@
       <h3 id="resultsAnchor">Processing Complete!</h3>
       <p id="resultMessage"></p>
       <a id="downloadLink" href="#" download>Download Results</a>
-      
+
       <div class="email-section">
-        <h4 style="color: #007bff; margin-bottom: 15px;">📧 Send to Additional Email Address(es)</h4>
-        <p style="margin-bottom: 15px; color: #666;">If you want to send the results to more email address(es), use the forms below:</p>
-        
+        <h4 style="color: #007bff; margin-bottom: 15px">📧 Send to Additional Email Address(es)</h4>
+        <p style="margin-bottom: 15px; color: #666">
+          If you want to send the results to more email address(es), use the forms below:
+        </p>
+
         <div class="email-input-group">
           <label for="emailAddresses">Additional Email Addresses:</label>
-          <textarea 
-            id="emailAddresses" 
+          <textarea
+            id="emailAddresses"
             placeholder="Enter additional email addresses separated by commas or new lines&#10;Example:&#10;john@example.com&#10;jane@example.com, admin@company.com"
             rows="3"
           ></textarea>
-          <div class="small-text">Enter additional email addresses separated by commas or new lines</div>
+          <div class="small-text">
+            Enter additional email addresses separated by commas or new lines
+          </div>
         </div>
-        
+
         <div class="email-input-group">
           <label for="emailSubject">Subject (optional):</label>
-          <input 
-            type="text" 
-            id="emailSubject" 
+          <input
+            type="text"
+            id="emailSubject"
             placeholder="Custom email subject"
             value="Cadastral Processing Results"
           />
         </div>
-        
+
         <div class="email-input-group">
           <label for="emailMessage">Message (optional):</label>
-          <textarea 
-            id="emailMessage" 
+          <textarea
+            id="emailMessage"
             placeholder="Add a custom message to the email..."
             rows="3"
           ></textarea>
         </div>
-        
+
         <button class="email-button" type="button" id="sendEmailBtn" disabled>
           Send to Additional Emails
         </button>
-        
+
         <div id="emailStatus" class="email-status"></div>
       </div>
     </div>
@@ -303,10 +318,10 @@
           return;
         }
 
-        if (!primaryEmail) {
-          alert("Please enter an email address.");
-          return;
-        }
+        // if (!primaryEmail) {
+        //   alert("Please enter an email address.");
+        //   return;
+        // }
 
         primaryEmailAddress = primaryEmail;
         formData.append("excelFile", fileInput.files[0]);
@@ -334,7 +349,9 @@
           }
 
           document.getElementById("progressBar").style.width = percentage + "%";
-          document.getElementById("countText").innerText = `${data.progress} of ${data.total} processed`;
+          document.getElementById(
+            "countText"
+          ).innerText = `${data.progress} of ${data.total} processed`;
 
           if (data.progress >= data.total) {
             eventSource.close();
@@ -353,17 +370,18 @@
           if (result.success) {
             processedFileName = result.fileName;
             totalProcessedCount = result.totalProcessed;
-            
-            document.getElementById("resultMessage").innerText = 
-              `Successfully extracted ${result.totalProcessed} cadastral designation numbers, results sent to ${primaryEmailAddress}`;
+
+            document.getElementById(
+              "resultMessage"
+            ).innerText = `Successfully extracted ${result.totalProcessed} cadastral designation numbers, results sent to ${primaryEmailAddress}`;
             document.getElementById("downloadLink").href = result.downloadPath;
             document.getElementById("resultContainer").style.display = "block";
             document.getElementById("sendEmailBtn").disabled = false;
-            
+
             // Scroll to the results section
-            document.getElementById("resultsAnchor").scrollIntoView({ 
-              behavior: "smooth", 
-              block: "start" 
+            document.getElementById("resultsAnchor").scrollIntoView({
+              behavior: "smooth",
+              block: "start",
             });
           } else {
             alert("Error: " + result.error);
@@ -375,12 +393,12 @@
       });
 
       // Send email functionality
-      document.getElementById("sendEmailBtn").addEventListener("click", async function() {
+      document.getElementById("sendEmailBtn").addEventListener("click", async function () {
         const emailAddresses = document.getElementById("emailAddresses").value.trim();
         const emailSubject = document.getElementById("emailSubject").value.trim();
         const emailMessage = document.getElementById("emailMessage").value.trim();
         const statusDiv = document.getElementById("emailStatus");
-        
+
         if (!emailAddresses) {
           statusDiv.textContent = "Please enter at least one additional email address.";
           statusDiv.className = "email-status error";
@@ -393,7 +411,7 @@
         const originalText = sendBtn.textContent;
         sendBtn.disabled = true;
         sendBtn.textContent = "Sending...";
-        
+
         statusDiv.style.display = "none";
 
         try {
@@ -407,7 +425,7 @@
               subject: emailSubject || "Cadastral Processing Results",
               message: emailMessage,
               fileName: processedFileName,
-              totalProcessed: totalProcessedCount
+              totalProcessed: totalProcessedCount,
             }),
           });
 
@@ -440,8 +458,16 @@
         window.location.href = "/download-sample";
       });
     </script>
-    
-    <footer style="text-align: center; padding: 10px; background-color: #f1f1f1; margin-top: 20px; border-top: 1px solid #ddd">
+
+    <footer
+      style="
+        text-align: center;
+        padding: 10px;
+        background-color: #f1f1f1;
+        margin-top: 20px;
+        border-top: 1px solid #ddd;
+      "
+    >
       <p>&copy; 2025 MK. All rights reserved.</p>
     </footer>
   </body>
